@@ -32,7 +32,17 @@ type aaLogging struct {
 
 // Name returns the log file name
 func (l aaLogging) Name() string {
-	return l.filePath
+	return filepath.Base(l.filePath)
+}
+
+// New creates and returns a new AaLog for reading logs
+func New(c config.AalogbeatConfig) (AaLog, error) {
+	log := logp.NewLogger("aalog")
+	return &aaLogging{
+		config:    c,
+		directory: c.Directory,
+		log:       log,
+	}, nil
 }
 
 // Sets up the initial state for reading records. Does not keep the
@@ -245,8 +255,13 @@ func (l *aaLogging) readLogRecords(currentCount int32) ([]LogRecord, error) {
 
 	// If we zeros back then we don't know what's going on.
 	if recordCount == 0 || recordNumber == 0 || offset == 0 {
-		l.log.Debugf("Unable to get record count, record number, or offset for first record to read, file:%s", file.Name())
-		return nil, nil
+		if recordNumber > 0 && recordCount == 0 {
+			l.log.Debugf("No new records to read, record count:0")
+			return nil, nil
+		} else {
+			l.log.Warnf("Unable to get record count, record number, or offset for first record to read, file:%s", file.Name())
+			return nil, nil
+		}
 	}
 
 	// In enforcing the maximum batch size, take the number of records we
@@ -350,7 +365,7 @@ func (l *aaLogging) getStartingRecordStats(file *os.File) (int32, uint64, int32,
 		offset = r.offsetToNextRecord
 		lastRecordNumber := l.header.lastRecordNumber()
 		count = int32(lastRecordNumber - l.recordNumber)
-		l.log.Debugf("Reading records starting after last record read, file:%s, prev number:%d, prev offset:%d, next number:%d, next offset:%d", file.Name(), l.recordNumber, l.recordOffset, number, offset)
+		l.log.Debugf("Reading records starting after last record read, file:%s, count:%d, prev number:%d, prev offset:%d, next number:%d, next offset:%d", file.Name(), count, l.recordNumber, l.recordOffset, number, offset)
 	}
 	return count, number, offset, nil
 }
@@ -467,14 +482,4 @@ func (l *aaLogging) updateHeadersCache() (bool, error) {
 	}
 
 	return headerAdded, nil
-}
-
-// New creates and returns a new AaLog for reading logs
-func New(c config.AalogbeatConfig) (AaLog, error) {
-	log := logp.NewLogger("aalog")
-	return &aaLogging{
-		config:    c,
-		directory: c.Directory,
-		log:       log,
-	}, nil
 }

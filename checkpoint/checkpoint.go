@@ -3,9 +3,8 @@ package checkpoint
 import (
 	"fmt"
 	"io/ioutil"
-	"path/filepath"
 	"os"
-	"sort"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -16,33 +15,32 @@ import (
 
 // Checkpoint persists log state information to disk.
 type Checkpoint struct {
-	wg 						sync.WaitGroup 	// WaitGroup used to wait on the shutdown of the checkpoint worker.
-	done 					chan struct{} 	// Channel for shutting down the checkpoint worker.
-	once 					sync.Once 			// Used to guarantee shutdown happens once.
-	file 					string 					// File where the state is persisted.
-	fileLock 			sync.RWMutex 		// Lock that protects concurrent read/writes to the file.
-	numUpdates 		int 						// Number of updates received since last persisting to disk.
-	maxUpdates 		int 						// Maximum number of updates to buffer before persisting to disk.
-	flushInterval time.Duration 	// Maximum time interval that can pass before persisting to disk.
-	sort 					[]string 				// Slice used for sorting states map (store to save on mallocs).
-
-	lock 					sync.RWMutex
-	states 				map[string]AaLogState
-
-	save 					chan AaLogState
+	wg            sync.WaitGroup  // WaitGroup used to wait on the shutdown of the checkpoint worker.
+	done          chan struct{}   // Channel for shutting down the checkpoint worker.
+	once          sync.Once       // Used to guarantee shutdown happens once.
+	file          string          // File where the state is persisted.
+	fileLock      sync.RWMutex    // Lock that protects concurrent read/writes to the file.
+	numUpdates    int             // Number of updates received since last persisting to disk.
+	maxUpdates    int             // Maximum number of updates to buffer before persisting to disk.
+	flushInterval time.Duration   // Maximum time interval that can pass before persisting to disk.
+	sort          []string        // Slice used for sorting states map (store to save on mallocs).
+	log           *logp.Logger    // For logging messages
+	lock          sync.RWMutex    // To keep writes in sync
+	state         AaLogState      // The state we are keeping
+	save          chan AaLogState // Queue of states to save
 }
 
 // PersistedState represents the format of the data persisted to disk.
 type PersistedState struct {
-	UpdateTime 	time.Time 		`yaml:"update_time"`
-	States 			[]AaLogState 	`yaml:"logs"`
+	UpdateTime time.Time  `yaml:"update_time"`
+	State      AaLogState `yaml:"logs"`
 }
 
 // AaLogState represents the state of an individual log file.
 type AaLogState struct {
-	FileName 			string 	`yaml:"file_name"` 			// Name of the file being read. Don't need full path as the configuration has the folder.
-	RecordNumber 	uint64 	`yaml:"record_number"` 	// Number of the record last read
-	RecordOffset 	int32 	`yaml:"record_offset"` 	// Byte position of the start of the last record read in the file.
+	FileName     string `yaml:"file_name"`     // Name of the file being read. Don't need full path as the configuration has the folder.
+	RecordNumber uint64 `yaml:"record_number"` // Number of the record last read
+	RecordOffset int32  `yaml:"record_offset"` // Byte position of the start of the last record read in the file.
 }
 
 // NewCheckpoint creates and returns a new Checkpoint. This method loads state
@@ -53,17 +51,19 @@ type AaLogState struct {
 // file is the name of the file where event log state is persisted as YAML.
 // maxUpdates is the maximum number of updates checkpoint will accept before
 // triggering a flush to disk.
-// interval is maximum amount of time that can pass since the last flush before 
+// interval is maximum amount of time that can pass since the last flush before
 // triggering a flush to disk (minimum value is 1s).
 func NewCheckpoint(file string, maxUpdates int, interval time.Duration) (*Checkpoint, error) {
+	log := logp.NewLogger("checkpoint")
 	c := &Checkpoint{
-		done: make(chan struct{}),
-		file: file,
-		maxUpdates: maxUpdates, 
+		done:          make(chan struct{}),
+		file:          file,
+		maxUpdates:    maxUpdates,
 		flushInterval: interval,
-		sort: make([]string, 0, 10),
-		states: make(map[string]AaLogState),
-		save: make(chan AaLogState, 1),
+		sort:          make([]string, 0, 10),
+		state:         AaLogState{},
+		save:          make(chan AaLogState, 1),
+		log:           log,
 	}
 
 	// Enforce minimums
@@ -79,18 +79,18 @@ func NewCheckpoint(file string, maxUpdates int, interval time.Duration) (*Checkp
 	if err != nil {
 		return nil, err
 	}
+	c.log.Debugf("Successfully tested reading file %s", c.file)
 
 	if ps != nil {
-		for _, state := range ps.States {
-			c.states[state.FileName] = state
-		}
+		c.state = ps.State
 	}
 
-	// Write teh state file to verify we have permissions.
+	// Write the state file to verify we have permissions.
 	err = c.flush()
 	if err != nil {
 		return nil, err
 	}
+	c.log.Debugf("Successfully tested flushing to file %s", c.file)
 
 	c.wg.Add(1)
 	go c.run()
@@ -114,7 +114,7 @@ loop:
 			break loop
 		case s := <-c.save:
 			c.lock.Lock()
-			c.states[s.FileName] = s
+			c.state = s
 			c.lock.Unlock()
 			c.numUpdates++
 			if c.numUpdates < c.maxUpdates {
@@ -132,29 +132,26 @@ loop:
 // it stops). This method blocks until the checkpoint worker shutdowns. Calling
 // this method more once is safe and has no effect.
 func (c *Checkpoint) Shutdown() {
+	c.log.Infof("Shutdown called")
 	c.once.Do(func() {
 		close(c.done)
 		c.wg.Wait()
 	})
 }
 
-// States returns the current in-memory log state. This state information 
+// State returns the current in-memory log state. This state information
 // is bootstrapped with any data found on disk at creation time.
-func (c *Checkpoint) States() map[string]AaLogState {
+func (c *Checkpoint) State() AaLogState {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
-	copy := make(map[string]AaLogState)
-	for k, v := range c.states {
-		copy[k] = v
-	}
-	return copy
+	return c.state
 }
 
 // Persist queues the given log state information to be written to disk.
 func (c *Checkpoint) Persist(fileName string, recordNumber uint64, recordOffset int32) {
 	c.PersistState(AaLogState{
-		FileName: 		fileName,
+		FileName:     fileName,
 		RecordNumber: recordNumber,
 		RecordOffset: recordOffset,
 	})
@@ -173,11 +170,11 @@ func (c *Checkpoint) persist() bool {
 
 	err := c.flush()
 	if err != nil {
-		logp.Err("%v", err)
+		c.log.Errorf("%v", err)
 		return false
 	}
 
-	logp.Debug("checkpoint", "Checkpoint saved to disk. numUpdates=%d", c.numUpdates)
+	c.log.Debugf("checkpoint", "Checkpoint saved to disk. numUpdates=%d", c.numUpdates)
 	c.numUpdates = 0
 	return true
 }
@@ -200,19 +197,9 @@ func (c *Checkpoint) flush() error {
 		return fmt.Errorf("Failed to flush state to disk. %v", err)
 	}
 
-	// Sort persisted logs by name.
-	c.sort = c.sort[:0]
-	for k := range c.states {
-		c.sort = append(c.sort, k)
-	}
-	sort.Strings(c.sort)
-
 	ps := PersistedState{
 		UpdateTime: time.Now().UTC(),
-		States: 		make([]AaLogState, len(c.sort)),
-	}
-	for i, name := range c.sort {
-		ps.States[i] = c.states[name]
+		State:      c.state,
 	}
 
 	data, err := yaml.Marshal(ps)
@@ -234,7 +221,7 @@ func (c *Checkpoint) flush() error {
 	return err
 }
 
-// read loads the persisted state from disk. If the file does not exist 
+// read loads the persisted state from disk. If the file does not exist
 // then the method returns nil and no error.
 func (c *Checkpoint) read() (*PersistedState, error) {
 	c.fileLock.RLock()
@@ -256,10 +243,10 @@ func (c *Checkpoint) read() (*PersistedState, error) {
 	return ps, nil
 }
 
-// createDir creates the directory in which the state file will reside 
+// createDir creates the directory in which the state file will reside
 // if the directory does not already exist
 func (c *Checkpoint) createDir() error {
 	dir := filepath.Dir(c.file)
-	logp.Info("Creating %s if it does not exist.", dir)
+	c.log.Infof("Creating %s if it does not exist.", dir)
 	return os.MkdirAll(dir, os.FileMode(0750))
 }

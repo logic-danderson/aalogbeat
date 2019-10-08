@@ -21,14 +21,16 @@ import (
 type Aalogbeat struct {
 	beat       *beat.Beat             // Common beat information
 	config     config.AalogbeatConfig // Configuration settings
-	log        *aaLogger              // Log being monitored
+	logger     *aaLogger              // Log being monitored
 	done       chan struct{}          // Channel to initiate shutdown of main event loop
 	pipeline   beat.Pipeline          // Interface to publish event
 	checkpoint *checkpoint.Checkpoint // Persists log state to disk
+	log        *logp.Logger           // For logging messages
 }
 
 // New creates an instance of Aalogbeat.
 func New(b *beat.Beat, rawConfig *common.Config) (beat.Beater, error) {
+	log := logp.NewLogger("aalogbeat")
 	config := cfg.DefaultSettings
 	if err := rawConfig.Unpack(&config); err != nil {
 		return nil, fmt.Errorf("Error reading configuration file. %v", err)
@@ -36,13 +38,14 @@ func New(b *beat.Beat, rawConfig *common.Config) (beat.Beater, error) {
 
 	// Resolve registry file path
 	config.RegistryFile = paths.Resolve(paths.Data, config.RegistryFile)
-	logp.Info("State will be read from and persisted to %s",
+	log.Info("State will be read from and persisted to %s",
 		config.RegistryFile)
 
 	bt := &Aalogbeat{
 		beat:   b,
 		config: config,
 		done:   make(chan struct{}),
+		log:    log,
 	}
 
 	if err := bt.init(b); err != nil {
@@ -58,14 +61,14 @@ func (bt *Aalogbeat) init(b *beat.Beat) error {
 	if err != nil {
 		return fmt.Errorf("Failed to create new log. %v", err)
 	}
-	logp.Debug("Initialized AaLog %s", log.Name())
+	bt.log.Debug("Initialized AaLog %s", log.Name())
 
 	logger, err := newAaLogger(log, bt.beat.BeatConfig)
 	if err != nil {
 		return fmt.Errorf("Failed to create new log. %v", err)
 	}
 
-	bt.log = logger
+	bt.logger = logger
 
 	return nil
 }
@@ -104,16 +107,16 @@ func (bt *Aalogbeat) Run(b *beat.Beat) error {
 	}
 
 	var wg sync.WaitGroup
-	state, _ := persistedState[bt.log.source.Name()]
+	state, _ := persistedState[bt.logger.source.Name()]
 	// Start a goroutine for the log
 	wg.Add(1)
-	go bt.processLog(&wg, bt.log, state, acker)
+	go bt.processLog(&wg, bt.logger, state, acker)
 
 	wg.Wait()
 	defer bt.checkpoint.Shutdown()
 
 	if bt.config.ShutdownTimeout > 0 {
-		logp.Info("Shutdown will wait max %v for the remaining %v events to publish.",
+		bt.log.Info("Shutdown will wait max %v for the remaining %v events to publish.",
 			bt.config.ShutdownTimeout, acker.Active())
 		ctx, cancel := context.WithTimeout(context.Background(), bt.config.ShutdownTimeout)
 		defer cancel()
@@ -125,7 +128,7 @@ func (bt *Aalogbeat) Run(b *beat.Beat) error {
 
 // Stop stops aalogbeat.
 func (bt *Aalogbeat) Stop() {
-	logp.Info("Stopping Aalogbeat")
+	bt.log.Info("Stopping Aalogbeat")
 	if bt.done != nil {
 		close(bt.done)
 	}

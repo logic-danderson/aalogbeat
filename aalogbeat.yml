@@ -1,10 +1,18 @@
 ################### Aalogbeat Configuration Example #########################
 
 ############################# Aalogbeat ######################################
-
 aalogbeat:
-  # Defines how often an event is sent to the output
-  period: 1s
+  # The registry file is where Aalogbeat persists its state so that the beat can
+  # resume after shutdown or an outage. The default is .aalogbeat.yml in the
+  # directory in which it was started.
+  #registry_file: .aalogbeat.yml
+
+  # Full path to the directory containing the log files to monitor.
+  # The forward slashes (/) in the path are automatically changed to 
+  # backslashes (\) for Windows compatibility. You can use either 
+  # forward or backslashes. Forward slashes are easier to work with 
+  # in YAML because there is no need to escape them.
+  directory: tests/files/logs
 
 #================================ General =====================================
 

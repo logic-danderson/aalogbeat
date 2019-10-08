@@ -17,6 +17,7 @@ type aaLogger struct {
 	source     aalog.AaLog
 	eventMeta  common.EventMetadata
 	processors beat.ProcessorList
+	log        *logp.Logger
 }
 
 type aaLoggerConfig struct {
@@ -25,6 +26,7 @@ type aaLoggerConfig struct {
 }
 
 func newAaLogger(source aalog.AaLog, options *common.Config) (*aaLogger, error) {
+	log := logp.NewLogger("aalogger")
 	config := aaLoggerConfig{}
 	if err := options.Unpack(&config); err != nil {
 		return nil, err
@@ -39,6 +41,7 @@ func newAaLogger(source aalog.AaLog, options *common.Config) (*aaLogger, error) 
 		source:     source,
 		eventMeta:  config.EventMetadata,
 		processors: processors,
+		log:        log,
 	}, nil
 }
 
@@ -53,7 +56,7 @@ func (l *aaLogger) connect(pipeline beat.Pipeline) (beat.Client, error) {
 		},
 		ACKCount: func(n int) {
 			addPublished(filePath, n)
-			logp.Info("AaLog %s successfully published %d events", filePath, n)
+			l.log.Infof("%s successfully published %d events", filePath, n)
 		},
 	})
 }
@@ -70,7 +73,7 @@ func (l *aaLogger) run(
 
 	client, err := l.connect(pipeline)
 	if err != nil {
-		logp.Warn("Aalog %s Pipeline error. Failed to connect to publisher pipeline",
+		l.log.Warnf("%s Pipeline error. Failed to connect to publisher pipeline",
 			log.Name())
 		return
 	}
@@ -84,21 +87,21 @@ func (l *aaLogger) run(
 
 	err = log.Open(state)
 	if err != nil {
-		logp.Warn("Aalog %s Open() error, No records will be read from "+
+		l.log.Errorf("%s Open() error, No records will be read from "+
 			"this source. %v", log.Name(), err)
 		return
 	}
 
 	defer func() {
-		logp.Info("Aalog %s Stop processing.", log.Name())
+		l.log.Infof("%s Stop processing.", log.Name())
 
 		if err := log.Close(); err != nil {
-			logp.Warn("Aalog %s Close() error. %v", log.Name(), err)
+			l.log.Errorf("%s Close() error. %v", log.Name(), err)
 			return
 		}
 	}()
 
-	logp.Debug("Aalog %s opened successfully", log.Name())
+	l.log.Debugf("%s opened successfully", log.Name())
 
 	for stop := false; !stop; {
 		select {
@@ -113,11 +116,11 @@ func (l *aaLogger) run(
 		case io.EOF:
 			stop = true
 		default:
-			logp.Warn("Aalog %s Read() error: %v", log.Name(), err)
+			l.log.Errorf("%s Read() error: %v", log.Name(), err)
 			return
 		}
 
-		logp.Debug("Aalog %s Read() returned %d records", log.Name(), len(records))
+		l.log.Debugf("%s Read() returned %d records", log.Name(), len(records))
 		if len(records) == 0 {
 			time.Sleep(time.Second)
 			continue
