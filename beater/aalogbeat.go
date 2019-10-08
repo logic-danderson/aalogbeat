@@ -95,7 +95,6 @@ func (bt *Aalogbeat) Run(b *beat.Beat) error {
 	}
 
 	acker := newEventACKer(bt.checkpoint)
-	persistedState := bt.checkpoint.States()
 
 	initMetrics("total")
 
@@ -106,8 +105,8 @@ func (bt *Aalogbeat) Run(b *beat.Beat) error {
 		return err
 	}
 
+	state := bt.checkpoint.State()
 	var wg sync.WaitGroup
-	state, _ := persistedState[bt.logger.source.Name()]
 	// Start a goroutine for the log
 	wg.Add(1)
 	go bt.processLog(&wg, bt.logger, state, acker)
