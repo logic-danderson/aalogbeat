@@ -1,3 +1,33 @@
+###################### Aalogbeat Configuration Example ######################
+
+# This file is an example configuration file highlighting only the most common
+# options. The aalogbeat.reference.yml file from the same directory contains
+# all the supported options with more comments. You can use it as a reference.
+
+#========================= Aalogbeat specific options ==========================
+
+aalogbeat:
+  # The registry file is where Aalogbeat persists its state so that the beat can
+  # resume after shutdown or an outage. The default is .aalogbeat.yml in the
+  # directory in which it was started.
+  #registry_file: .aalogbeat.yml
+
+  # Full path to the directory containing the log files to monitor.
+  # The forward slashes (/) in the path are automatically changed to 
+  # backslashes (\) for Windows compatibility. You can use either 
+  # forward or backslashes. Forward slashes are easier to work with 
+  # in YAML because there is no need to escape them.
+  directory: C:/ProgramData/ArchestrA/LogFiles
+
+  # Pattern used to identify the log files within the directory.
+  # The pattern should use the syntax as described for Match as 
+  # described here:
+  # https://golang.org/pkg/path/filepath/#Match
+  file_pattern: *.aaLOG
+
+  # Maximum number of log messages to read at a time.
+  batch_size: 1000
+
 
 #================================ General ======================================
 
