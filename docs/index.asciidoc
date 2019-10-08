@@ -1,0 +1,5 @@
+= Aalogbeat Docs
+
+Welcome to the Aalogbeat documentation.
+
+
