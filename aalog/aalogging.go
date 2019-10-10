@@ -73,7 +73,7 @@ func (l *aaLogging) Open(state checkpoint.AaLogState) error {
 	l.filePath = filePath
 
 	// Verify we can open the file and read the header.
-	l.log.Infof("Open filePath:%s, recordNumber:%d, recordOffset:%d)", l.filePath, state.RecordNumber, state.RecordOffset)
+	l.log.Infof("Open filePath:%s, recordNumber:%d, recordOffset:%d", l.filePath, state.RecordNumber, state.RecordOffset)
 	file, err := os.Open(l.filePath)
 	if err != nil {
 		return err
@@ -145,7 +145,8 @@ func (l *aaLogging) Read() ([]Record, error) {
 		l.recordOffset = r.offset
 	}
 
-	l.log.Debugf("Read record count:%d, last file read:%s", len(records), l.filePath)
+	l.log.Debugf("Read record count:%d, first record number:%d, last record number:%d, last file read:%s",
+		len(records), records[0].number, records[len(records)-1].number, l.filePath)
 	return records, nil
 }
 

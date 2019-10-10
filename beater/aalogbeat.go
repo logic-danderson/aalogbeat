@@ -33,13 +33,12 @@ func New(b *beat.Beat, rawConfig *common.Config) (beat.Beater, error) {
 	log := logp.NewLogger("aalogbeat")
 	config := cfg.DefaultSettings
 	if err := rawConfig.Unpack(&config); err != nil {
-		return nil, fmt.Errorf("Error reading configuration file. %v", err)
+		return nil, fmt.Errorf("Error reading configuration file, error:%v", err)
 	}
 
 	// Resolve registry file path
 	config.RegistryFile = paths.Resolve(paths.Data, config.RegistryFile)
-	log.Info("State will be read from and persisted to %s",
-		config.RegistryFile)
+	log.Infof("State will be read from and persisted, file:%s", config.RegistryFile)
 
 	bt := &Aalogbeat{
 		beat:   b,
@@ -59,13 +58,13 @@ func (bt *Aalogbeat) init(b *beat.Beat) error {
 	// Create the log.
 	log, err := aalog.New(bt.config)
 	if err != nil {
-		return fmt.Errorf("Failed to create new log. %v", err)
+		return fmt.Errorf("Failed to create new log, error:%v", err)
 	}
-	bt.log.Debug("Initialized AaLog %s", log.Name())
+	bt.log.Debugf("Initialized Aalog")
 
 	logger, err := newAaLogger(log, bt.beat.BeatConfig)
 	if err != nil {
-		return fmt.Errorf("Failed to create new log. %v", err)
+		return fmt.Errorf("Failed to create new log, error:%v", err)
 	}
 
 	bt.logger = logger
@@ -115,7 +114,7 @@ func (bt *Aalogbeat) Run(b *beat.Beat) error {
 	defer bt.checkpoint.Shutdown()
 
 	if bt.config.ShutdownTimeout > 0 {
-		bt.log.Info("Shutdown will wait max %v for the remaining %v events to publish.",
+		bt.log.Infof("Shutdown will wait for the remaining events to publish, max wait time:%v, event count:%v.",
 			bt.config.ShutdownTimeout, acker.Active())
 		ctx, cancel := context.WithTimeout(context.Background(), bt.config.ShutdownTimeout)
 		defer cancel()
@@ -127,7 +126,7 @@ func (bt *Aalogbeat) Run(b *beat.Beat) error {
 
 // Stop stops aalogbeat.
 func (bt *Aalogbeat) Stop() {
-	bt.log.Info("Stopping Aalogbeat")
+	bt.log.Infof("Stopping Aalogbeat")
 	if bt.done != nil {
 		close(bt.done)
 	}

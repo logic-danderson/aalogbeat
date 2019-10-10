@@ -77,7 +77,7 @@ type Record struct {
 
 // ToEvent returns a new MapStr containing the data from this LogRecord
 func (r Record) ToEvent() beat.Event {
-	rec := common.MapStr{
+	aa := common.MapStr{
 		"number":       r.number,
 		"session_id":   r.sessionId,
 		"process_id":   r.processId,
@@ -89,7 +89,8 @@ func (r Record) ToEvent() beat.Event {
 	}
 
 	fields := common.MapStr{
-		"aalog": rec,
+		"log.file.path": r.file,
+		"aalog":         aa,
 	}
 
 	return beat.Event{

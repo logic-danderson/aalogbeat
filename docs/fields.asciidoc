@@ -24,20 +24,117 @@ grouped in the following categories:
 
 --
 [[exported-fields-aalogbeat]]
-== aalogbeat fields
+== Aalogbeat fields
 
-None
+Fields from the aaLOG files
 
 
-*`counter`*::
+
+*`number`*::
 +
 --
-PLEASE UPDATE DOCUMENTATION
+Record number
 
 
 type: long
 
 required: True
+
+--
+
+*`session_id`*::
++
+--
+IP address of the user session
+
+
+type: keyword
+
+required: False
+
+--
+
+*`process_id`*::
++
+--
+ID of the process that logged the record
+
+
+type: integer
+
+required: False
+
+--
+
+*`process_name`*::
++
+--
+Name of the process that logged the record
+
+
+type: keyword
+
+required: False
+
+--
+
+*`thread_id`*::
++
+--
+ID of the thread that logged the record
+
+
+type: integer
+
+required: False
+
+--
+
+*`log_flag`*::
++
+--
+Flag such as Info, Warning, etc. used when logging the record
+
+
+type: keyword
+
+required: False
+
+--
+
+*`component`*::
++
+--
+Name of the software component inside the process that logged the record
+
+
+type: keyword
+
+required: False
+
+--
+
+*`message`*::
++
+--
+The log messsage
+
+
+type: text
+
+required: False
+
+--
+
+*`file_name`*::
++
+--
+Name of the log file from which the record was read
+
+
+type: keyword
+
+required: False
 
 --
 

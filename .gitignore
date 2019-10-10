@@ -1,6 +1,7 @@
 /.idea
 /build
 data/.aalogbeat.yml
+logs/
 
 .DS_Store
 /aalogbeat

@@ -56,7 +56,7 @@ func (l *aaLogger) connect(pipeline beat.Pipeline) (beat.Client, error) {
 		},
 		ACKCount: func(n int) {
 			addPublished(filePath, n)
-			l.log.Infof("%s successfully published %d events", filePath, n)
+			l.log.Infof("Successfully published events:%d", n)
 		},
 	})
 }
@@ -73,8 +73,7 @@ func (l *aaLogger) run(
 
 	client, err := l.connect(pipeline)
 	if err != nil {
-		l.log.Warnf("%s Pipeline error. Failed to connect to publisher pipeline",
-			log.Name())
+		l.log.Warnf("Pipeline error. Failed to connect to publisher pipeline, file:%s", log.Name())
 		return
 	}
 
@@ -87,21 +86,21 @@ func (l *aaLogger) run(
 
 	err = log.Open(state)
 	if err != nil {
-		l.log.Errorf("%s Open() error, No records will be read from "+
-			"this source. %v", log.Name(), err)
+		l.log.Errorf("Open error, No records will be read from "+
+			"this source, file:%s, error:%v", log.Name(), err)
 		return
 	}
 
 	defer func() {
-		l.log.Infof("%s Stop processing.", log.Name())
+		l.log.Infof("Stop processing.", log.Name())
 
 		if err := log.Close(); err != nil {
-			l.log.Errorf("%s Close() error. %v", log.Name(), err)
+			l.log.Errorf("Close error, file:%s, error:%v", log.Name(), err)
 			return
 		}
 	}()
 
-	l.log.Debugf("%s opened successfully", log.Name())
+	l.log.Debugf("Open succeeded")
 
 	for stop := false; !stop; {
 		select {
@@ -116,11 +115,11 @@ func (l *aaLogger) run(
 		case io.EOF:
 			stop = true
 		default:
-			l.log.Errorf("%s Read() error: %v", log.Name(), err)
+			l.log.Errorf("Read error, file:%s, error:%v", log.Name(), err)
 			return
 		}
 
-		l.log.Debugf("%s Read() returned %d records", log.Name(), len(records))
+		l.log.Debugf("Read returned records, count:%d", len(records))
 		if len(records) == 0 {
 			time.Sleep(time.Second)
 			continue
