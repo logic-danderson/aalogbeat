@@ -2,6 +2,7 @@
 /build
 data/.aalogbeat.yml
 logs/
+aalogbeat.exe
 
 .DS_Store
 /aalogbeat
