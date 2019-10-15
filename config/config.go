@@ -51,29 +51,47 @@ const (
 
 var (
 	DefaultSettings = AalogbeatConfig{
-		RegistryFile: DefaultRegistryFile,
-		FilePattern:  DefaultFilePattern,
-		Directory:    DefaultDirectory,
-		BatchSize:    DefaultBatchSize,
+		RegistryFile:     DefaultRegistryFile,
+		FilePattern:      DefaultFilePattern,
+		Directory:        DefaultDirectory,
+		BatchSize:        DefaultBatchSize,
+		BackfillEnabled:  false,
+		BackfillStart:    "",
+		BackfillDuration: 0,
 	}
 )
 
 var AalogbeatConfigKeys = common.MakeStringSet("batch_size", "file_pattern",
-	"directory", "fields", "tags", "shutdown_timeout", "registry_file")
+	"directory", "fields", "tags", "shutdown_timeout", "registry_file",
+	"backfill_enabled", "backfill_start", "backfill_duration")
 
-// AalogbeatConfig contains al of Aalogbeat configuration data
+// AalogbeatConfig contains all of Aalogbeat configuration data
 type AalogbeatConfig struct {
-	Directory       string        `config:"directory"`
-	FilePattern     string        `config:"file_pattern"`
-	BatchSize       int           `config:"batch_size" validate:"min=1"`
-	RegistryFile    string        `config:"registry_file"`
-	ShutdownTimeout time.Duration `config:"shutdown_timeout"`
+	Directory        string        `config:"directory"`
+	FilePattern      string        `config:"file_pattern"`
+	BatchSize        int           `config:"batch_size" validate:"min=1"`
+	RegistryFile     string        `config:"registry_file"`
+	ShutdownTimeout  time.Duration `config:"shutdown_timeout"`
+	BackfillEnabled  bool          `config:"backfill_enabled"`
+	BackfillStart    string        `config:"backfill_start"` // Unpack does not appear to support time.Time
+	BackfillDuration time.Duration `config:"backfill_duration"`
 }
 
 // Validate validates the AalogbeatConfig data and returns an error
 // describing all problems or nil if there are none.
 func (c AalogbeatConfig) Validate() error {
-	// We have default settings for the primary settings,
-	// so no need to validate if they are present in the config.
-	return nil
+	var errs multierror.Errors
+
+	if c.BackfillDuration < 0 {
+		errs = append(errs, fmt.Errorf("backfill_duration cannot be negative"))
+	}
+
+	if c.BackfillStart != "" {
+		_, err := time.ParseInLocation(time.RFC3339, c.BackfillStart, time.Local)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	return errs.Err()
 }
