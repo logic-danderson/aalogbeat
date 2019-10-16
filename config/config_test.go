@@ -51,6 +51,20 @@ func TestConfigValidate(t *testing.T) {
 			},
 			"1 error: backfill_duration cannot be negative",
 		},
+		{
+			AalogbeatConfig{
+				BackfillStart: "I am not a valid time",
+			},
+			"1 error: backfill_start has an invalid time value:'I am not a valid time'. The value should be in RFC3339 format.",
+		},
+		{
+			// Can get multiple errors.
+			AalogbeatConfig{
+				BackfillDuration: backfillDuration,
+				BackfillStart:    "Still not valid",
+			},
+			"2 errors: backfill_duration cannot be negative; backfill_start has an invalid time value:'Still not valid'. The value should be in RFC3339 format.",
+		},
 	}
 
 	for _, test := range testCases {
@@ -67,7 +81,7 @@ func TestReadConfig(t *testing.T) {
 		"registry_file":     ".blah.yml",
 		"shutdown_timeout":  "20s",
 		"backfill_enabled":  true,
-		"backfill_start":    time.Date(2019, time.October, 2, 15, 0, 0, 0, time.Local),
+		"backfill_start":    "2019-10-02T15:00:00-05:00",
 		"backfill_duration": "72h",
 	}
 	config, err := common.NewConfigFrom(options)
@@ -86,10 +100,22 @@ func TestReadConfig(t *testing.T) {
 	dur, _ := time.ParseDuration("20s")
 	assert.Equal(t, dur, c.ShutdownTimeout, "ShutdownTimeout")
 	assert.Equal(t, true, c.BackfillEnabled, "BackfillEnabled")
-	start := time.Date(2019, time.October, 2, 15, 0, 0, 0, time.Local)
-	assert.Equal(t, start, c.BackfillStart, "BackfillStart")
+	assert.Equal(t, "2019-10-02T15:00:00-05:00", c.BackfillStart, "BackfillStart")
 	dur, _ = time.ParseDuration("72h")
 	assert.Equal(t, dur, c.BackfillDuration, "BackfillDuration")
+}
+
+func TestDefaultConfig(t *testing.T) {
+	c := DefaultSettings
+
+	assert.Equal(t, "C:/ProgramData/ArchestrA/LogFiles", c.Directory, "Directory")
+	assert.Equal(t, "*.aaLOG", c.FilePattern, "FilePattern")
+	assert.Equal(t, 10000, c.BatchSize, "BatchSize")
+	assert.Equal(t, ".aalogbeat.yml", c.RegistryFile, "RegistryFile")
+	assert.Equal(t, time.Duration(0), c.ShutdownTimeout, "ShutdownTimeout")
+	assert.Equal(t, false, c.BackfillEnabled, "BackfillEnabled")
+	assert.Equal(t, "", c.BackfillStart, "BackfillStart")
+	assert.Equal(t, time.Duration(0), c.BackfillDuration, "BackfillDuration")
 }
 
 func newConfig(from map[string]interface{}) *common.Config {

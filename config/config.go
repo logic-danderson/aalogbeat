@@ -47,6 +47,14 @@ const (
 	DefaultDirectory = "C:/ProgramData/ArchestrA/LogFiles"
 	// DefaultBatchSize specifies the default number of log messages to read at a time
 	DefaultBatchSize = 10000
+	// DefaultShutdowntTimeout specifies duration to wait for the publisher to finish sending events
+	DefaultShutdownTimeout = 0
+	// DefaultBackfillEnabled specifies whether backfilling old log messages is enabled
+	DefaultBackfillEnabled = false
+	// DefaultBackfillStart specifies the date from which to backfill old log messsages
+	DefaultBackfillStart = ""
+	// DefautlBackfillDuration specifies the duration over which to backfill old log messages
+	DefaultBackfillDuration = 0
 )
 
 var (
@@ -55,9 +63,10 @@ var (
 		FilePattern:      DefaultFilePattern,
 		Directory:        DefaultDirectory,
 		BatchSize:        DefaultBatchSize,
-		BackfillEnabled:  false,
-		BackfillStart:    "",
-		BackfillDuration: 0,
+		ShutdownTimeout:  DefaultShutdownTimeout,
+		BackfillEnabled:  DefaultBackfillEnabled,
+		BackfillStart:    DefaultBackfillStart,
+		BackfillDuration: DefaultBackfillDuration,
 	}
 )
 
@@ -89,7 +98,7 @@ func (c AalogbeatConfig) Validate() error {
 	if c.BackfillStart != "" {
 		_, err := time.ParseInLocation(time.RFC3339, c.BackfillStart, time.Local)
 		if err != nil {
-			errs = append(errs, err)
+			errs = append(errs, fmt.Errorf("backfill_start has an invalid time value:'%s'. The value should be in RFC3339 format.", c.BackfillStart))
 		}
 	}
 
