@@ -2,6 +2,7 @@ package aalog
 
 import (
 	"encoding/binary"
+	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -957,6 +958,127 @@ func TestReadSwitchFromOneLogFileToAnother(t *testing.T) {
 	lr := records[len(records)-1]
 	assert.Equal(t, uint64(28236), lr.number)
 	assert.Equal(t, "DA17U3SP11565612061.aaLOG", lr.file)
+}
+
+// Verify when backfill is disabled it does not return any records on read.
+func TestWhenBackfillIsDisabled(t *testing.T) {
+	configureLogp()
+
+	directory := "test-files"
+	logFiles, err := createBackfillTestLogs(directory, 10)
+	defer func() {
+		for _, filePath := range logFiles {
+			deleteFileIfExists(filePath)
+		}
+	}()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	options := map[string]interface{}{
+		"directory":        directory,
+		"file_pattern":     "*.aaLOG",
+		"backfill_enabled": "false",
+	}
+
+	aalog, teardown := setupAaLog(t, "", 0, 0, options)
+	defer teardown()
+
+	records, err := aalog.Read()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Len(t, records, 0)
+}
+
+// Verify when backfill is enabled and duration is set
+// it returns all records within that duration.
+func TestWhenBackfillHasDuration(t *testing.T) {
+	configureLogp()
+
+	directory := "test-files"
+	logFiles, err := createBackfillTestLogs(directory, 10)
+	defer func() {
+		for _, filePath := range logFiles {
+			deleteFileIfExists(filePath)
+		}
+	}()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	options := map[string]interface{}{
+		"directory":         directory,
+		"file_pattern":      "*.aaLOG",
+		"backfill_enabled":  "true",
+		"backfill_duration": "18h",
+	}
+
+	aalog, teardown := setupAaLog(t, "", 0, 0, options)
+	defer teardown()
+
+	records, err := aalog.Read()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Len(t, records, 0)
+}
+
+// Creates a set of log files to use for backfill testing in
+// the given folder over the given number of days, one file
+// per day.
+// Returns an array containing the file paths of the logs.
+func createBackfillTestLogs(directory string, days int) ([]string, error) {
+	filePaths := make([]string, days)
+	number := uint64(1001)
+	previousFileName := "X.aaLOG"
+	for i := days - 1; i >= 0; i-- {
+		fileName := fmt.Sprintf("backfill-test-%d.aaLOG", i)
+		filePath := filepath.Join(directory, fileName)
+		filePaths[i] = filePath
+		records, nextNumber := createBackfillLogRecords(fileName, i, number)
+		header := createTestLogHeader(fileName, "BackfilledPC", "SessionA", previousFileName, records)
+
+		if err := writeTestLogFile(filePath, &header, records); err != nil {
+			return filePaths, err
+		}
+
+		previousFileName = fileName
+		number = nextNumber
+	}
+	return filePaths, nil
+}
+
+func createBackfillLogRecords(file string, daysAgo int, startingNumber uint64) ([]LogRecord, uint64) {
+	var records []LogRecord
+	number := uint64(startingNumber)
+	now := time.Now()
+	year, month, day := now.Date()
+	today := time.Date(year, month, day, 0, 0, 0, 0, time.Local)
+	recordTime := today.AddDate(0, 0, -daysAgo)
+	for i := 0; i < 1440; i++ {
+		component := randomComponent()
+		records = append(records, LogRecord{
+			file:        file,
+			number:      number,
+			sessionId:   randomSessionId(),
+			processId:   component.processId,
+			processName: component.processName,
+			threadId:    component.threadId,
+			recordTime:  recordTime,
+			logFlag:     randomLogFlag(),
+			component:   component.component,
+			message:     randomMessage(),
+		})
+		number++
+		recordTime = recordTime.Add(time.Minute)
+		if recordTime.After(now) {
+			break
+		}
+	}
+	return records, number
 }
 
 func findMatchingRecord(number uint64, records []LogRecord) (LogRecord, bool) {

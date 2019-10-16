@@ -102,5 +102,9 @@ func (c AalogbeatConfig) Validate() error {
 		}
 	}
 
+	if c.BackfillEnabled && c.BackfillDuration == 0 && c.BackfillStart == "" {
+		errs = append(errs, fmt.Errorf("backfill_enabled is true so either backfill_start or backfill_duration must be set"))
+	}
+
 	return errs.Err()
 }

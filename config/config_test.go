@@ -65,6 +65,14 @@ func TestConfigValidate(t *testing.T) {
 			},
 			"2 errors: backfill_duration cannot be negative; backfill_start has an invalid time value:'Still not valid'. The value should be in RFC3339 format.",
 		},
+		{
+			// If backfill is enabled then either start or duration
+			// need to be set.
+			AalogbeatConfig{
+				BackfillEnabled: true,
+			},
+			"1 error: backfill_enabled is true so either backfill_start or backfill_duration must be set",
+		},
 	}
 
 	for _, test := range testCases {

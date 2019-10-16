@@ -124,7 +124,7 @@ func (l *aaLogging) Read() ([]Record, error) {
 	if err != nil {
 		return nil, err
 	}
-	if logRecords == nil {
+	if logRecords == nil || len(logRecords) == 0 {
 		l.log.Debugf("Read returned zero records")
 		return nil, nil
 	}
