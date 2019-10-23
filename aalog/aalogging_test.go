@@ -1120,8 +1120,49 @@ func TestWhenBackfillHasStartTime(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Should have one record every minute over the duration.
+	// Should have one record every minute since the start time.
 	assert.Len(t, records, 36*60)
+	for _, record := range records {
+		assert.True(t, record.recordTime.After(startTime))
+	}
+}
+
+// Verify when backfill is enabled and both start time and
+// duration are set then start time wins.
+func TestWhenBackfillHasBothStartTimeAndDuration(t *testing.T) {
+	configureLogp()
+
+	directory := "test-files"
+	logFiles, err := createBackfillTestLogs(directory, 10)
+	defer func() {
+		for _, filePath := range logFiles {
+			deleteFileIfExists(filePath)
+		}
+	}()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	startTime := time.Now().Add(time.Hour * -12)
+	options := map[string]interface{}{
+		"directory":         directory,
+		"file_pattern":      "*.aaLOG",
+		"backfill_enabled":  "true",
+		"backfill_duration": "24h",
+		"backfill_start":    startTime.Format(time.RFC3339),
+		"batch_size":        10000,
+	}
+
+	aalog, teardown := setupAaLog(t, "", 0, 0, options)
+	defer teardown()
+
+	records, err := aalog.Read()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Should have one record every minute since the start time.
+	assert.Len(t, records, 12*60)
 	for _, record := range records {
 		assert.True(t, record.recordTime.After(startTime))
 	}
