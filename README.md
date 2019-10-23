@@ -32,22 +32,37 @@ For further development, check out the [beat developer guide](https://www.elasti
 
 ### Build
 
-To build the binary for Aalogbeat run the command below. This will generate a binary
-in the same directory with the name aalogbeat.
+To build the Linux binary for Aalogbeat run the command below. This will 
+generate a binary in the same directory with the name aalogbeat.
 
 ```
 make
 ```
 
+To build the Windows binary for Aalogbeat run the command below. This will 
+generate a Windows excutable in the same directory with the name aalogbeat.exe.
+
+```
+GOOS=window GOARCH=amd64 go build
+```
 
 ### Run
 
-To run Aalogbeat with debugging output enabled, run:
+To run Aalogbeat with debugging output enabled in Linux, run:
 
 ```
 ./aalogbeat -c aalogbeat.yml -e -d "*"
 ```
 
+To run Aalogbeat with debugging output enabled in Windows, run:
+
+```
+aalogbeat.exe -c aalogbeat.yml -e -d "*"
+```
+
+There are also PowerShell scripts install-service-aalogbeat.ps1 and 
+uninstall-service-aalogbeat.ps1 that can be used to configure Aalogbeat 
+to run as a Windows service.
 
 ### Test
 
