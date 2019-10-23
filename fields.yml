@@ -2948,57 +2948,64 @@
   description: >
     Fields from the aaLOG files
   fields:
-    - name: number
-      type: long
-      required: true
+
+    - name: aalog
+      type: group
       description: >
-        Record number
-    
-    - name: session_id
-      type: keyword
-      required: false
-      description: >
-        IP address of the user session
+        All fields specific to the aaLOG file record
+      fields:
+
+      - name: number
+        type: long
+        required: true
+        description: >
+          Record number
       
-    - name: process_id
-      type: integer
-      required: false
-      description: >
-        ID of the process that logged the record
-    
-    - name: process_name
-      type: keyword
-      required: false
-      description: >
-        Name of the process that logged the record
+      - name: session_id
+        type: keyword
+        required: false
+        description: >
+          IP address of the user session
+        
+      - name: process_id
+        type: integer
+        required: false
+        description: >
+          ID of the process that logged the record
+      
+      - name: process_name
+        type: keyword
+        required: false
+        description: >
+          Name of the process that logged the record
 
-    - name: thread_id
-      type: integer
-      required: false
-      description: >
-        ID of the thread that logged the record
+      - name: thread_id
+        type: integer
+        required: false
+        description: >
+          ID of the thread that logged the record
 
-    - name: log_flag
-      type: keyword
-      required: false
-      description: >
-        Flag such as Info, Warning, etc. used when logging the record
-    
-    - name: component
-      type: keyword
-      required: false
-      description: >
-        Name of the software component inside the process that logged the record
-    
-    - name: message
-      type: text
-      required: false
-      description: >
-        The log messsage
+      - name: log_flag
+        type: keyword
+        required: false
+        description: >
+          Flag such as Info, Warning, etc. used when logging the record
+      
+      - name: component
+        type: keyword
+        required: false
+        description: >
+          Name of the software component inside the process that logged the record
+      
+      - name: message
+        type: text
+        required: false
+        description: >
+          The log messsage
 
-    - name: file_name
-      type: keyword
-      required: false
-      description: >
-        Name of the log file from which the record was read
+      - name: file_name
+        type: text
+        required: false
+        description: >
+          Name of the log file from which the message was read
 

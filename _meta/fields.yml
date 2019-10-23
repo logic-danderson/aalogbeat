@@ -4,12 +4,6 @@
     Fields from the aaLOG files
   fields:
 
-    - name: log.file.path
-      type: keyword
-      required: false
-      description: >
-        Name of the log file from which the record was read
-
     - name: aalog
       type: group
       description: >
@@ -63,4 +57,10 @@
         required: false
         description: >
           The log messsage
+
+      - name: file_name
+        type: text
+        required: false
+        description: >
+          Name of the log file from which the message was read
 

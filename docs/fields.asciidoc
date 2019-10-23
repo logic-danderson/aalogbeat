@@ -30,7 +30,14 @@ Fields from the aaLOG files
 
 
 
-*`number`*::
+[float]
+=== aalog
+
+All fields specific to the aaLOG file record
+
+
+
+*`aalog.number`*::
 +
 --
 Record number
@@ -42,7 +49,7 @@ required: True
 
 --
 
-*`session_id`*::
+*`aalog.session_id`*::
 +
 --
 IP address of the user session
@@ -54,7 +61,7 @@ required: False
 
 --
 
-*`process_id`*::
+*`aalog.process_id`*::
 +
 --
 ID of the process that logged the record
@@ -66,7 +73,7 @@ required: False
 
 --
 
-*`process_name`*::
+*`aalog.process_name`*::
 +
 --
 Name of the process that logged the record
@@ -78,7 +85,7 @@ required: False
 
 --
 
-*`thread_id`*::
+*`aalog.thread_id`*::
 +
 --
 ID of the thread that logged the record
@@ -90,7 +97,7 @@ required: False
 
 --
 
-*`log_flag`*::
+*`aalog.log_flag`*::
 +
 --
 Flag such as Info, Warning, etc. used when logging the record
@@ -102,7 +109,7 @@ required: False
 
 --
 
-*`component`*::
+*`aalog.component`*::
 +
 --
 Name of the software component inside the process that logged the record
@@ -114,7 +121,7 @@ required: False
 
 --
 
-*`message`*::
+*`aalog.message`*::
 +
 --
 The log messsage
@@ -126,13 +133,13 @@ required: False
 
 --
 
-*`file_name`*::
+*`aalog.file_name`*::
 +
 --
-Name of the log file from which the record was read
+Name of the log file from which the message was read
 
 
-type: keyword
+type: text
 
 required: False
 

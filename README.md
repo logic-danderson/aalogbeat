@@ -43,7 +43,7 @@ To build the Windows binary for Aalogbeat run the command below. This will
 generate a Windows excutable in the same directory with the name aalogbeat.exe.
 
 ```
-GOOS=window GOARCH=amd64 go build
+GOOS=windows GOARCH=amd64 go build
 ```
 
 ### Run
