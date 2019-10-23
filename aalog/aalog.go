@@ -33,6 +33,9 @@ type AaLog interface {
 
 	// Name returns the log's name.
 	Name() string
+
+	// State returns the most recent AaLogState.
+	State() checkpoint.AaLogState
 }
 
 type LogHeader struct {
@@ -50,7 +53,12 @@ type LogHeader struct {
 }
 
 func (h *LogHeader) lastRecordNumber() uint64 {
-	return h.firstRecordNumber + uint64(h.messageCount) - 1
+	// At least some test scenarios have zero messages, so handle that
+	// so the resulting record number doesn't roll over.
+	if h.messageCount > 0 {
+		return h.firstRecordNumber + uint64(h.messageCount) - 1
+	}
+	return h.firstRecordNumber
 }
 
 type LogRecord struct {

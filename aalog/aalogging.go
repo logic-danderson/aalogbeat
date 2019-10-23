@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"time"
 
 	"github.com/elastic/beats/libbeat/logp"
 
@@ -31,8 +32,13 @@ type aaLogging struct {
 }
 
 // Name returns the log file name
-func (l aaLogging) Name() string {
+func (l *aaLogging) Name() string {
 	return filepath.Base(l.filePath)
+}
+
+// State returns the most recent AaLogState.
+func (l *aaLogging) State() checkpoint.AaLogState {
+	return l.lastRead
 }
 
 // New creates and returns a new AaLog for reading logs
@@ -53,19 +59,16 @@ func (l *aaLogging) Open(state checkpoint.AaLogState) error {
 		return err
 	}
 
-	// All aaLogging has at this point is the directory to monitor.
-	// checkpoint.AaLogState might have a file name.
-	// If a file name is specified in state, try to read it.
-	// Otherwise, get the most recent log file.
-	filePath := ""
-	if state.FileName != "" {
-		filePath = filepath.Join(l.directory, state.FileName)
-	} else {
-		filePath, err = l.getLatestLogFilePath()
-		if err != nil {
-			return err
-		}
+	// adjustState potentially does a lot of work.
+	// One way or the other, state should point to
+	// where we should pick back up reading logs.
+	state, err = l.adjustState(state)
+	if err != nil {
+		return err
 	}
+	l.lastRead = state
+
+	filePath := filepath.Join(l.directory, state.FileName)
 	filePath, err = filepath.Abs(filePath)
 	if err != nil {
 		return err
@@ -97,12 +100,12 @@ func (l *aaLogging) Open(state checkpoint.AaLogState) error {
 		lastNumber = header.lastRecordNumber()
 
 		if l.recordNumber < firstNumber || l.recordNumber > lastNumber {
-			// Read from the beginning.
-			l.recordNumber = 0
-			l.recordOffset = 0
+			// Read from the end of the log.
+			l.recordNumber = header.lastRecordNumber()
+			l.recordOffset = header.lastRecordOffset
 		}
 	} else {
-		// Read from the beginning.
+		// The log has no messages yet, so read from the beginning.
 		l.recordNumber = 0
 		l.recordOffset = 0
 	}
@@ -153,7 +156,7 @@ func (l *aaLogging) Read() ([]Record, error) {
 // The log file is closed each time it is read so
 // this is just a placeholder.
 func (l *aaLogging) Close() error {
-	l.log.Debugf("Close called")
+	l.log.Infof("Close called")
 	return nil
 }
 
@@ -207,16 +210,291 @@ func (l *aaLogging) sortHeaders() {
 	})
 }
 
-func (l *aaLogging) getLatestLogFilePath() (string, error) {
+// adjustState verifies we have a valid state and if so simply returns it.
+// Otherwise it returns an updated state based on the backfill settings.
+func (l *aaLogging) adjustState(state checkpoint.AaLogState) (checkpoint.AaLogState, error) {
+	loadLatest := false
+
+	if state.FileName != "" && state.RecordNumber > 0 && state.RecordOffset > 0 {
+		canRead, err := l.canReadFileFromState(state)
+		if err != nil {
+			return checkpoint.AaLogState{}, err
+		}
+
+		if canRead {
+			// The state should be usable as-is assuming that file still exists.
+			return state, nil
+		}
+		// If canRead is false then that file doesn't exist.
+		l.log.Warnf("Unable to read the log specified in the current state, will use the most recent log instead, invalid state file:%s, number:%d, offset:%d", state.FileName, state.RecordNumber, state.RecordOffset)
+		loadLatest = true
+	}
+
+	if !loadLatest && l.config.BackfillEnabled {
+		// If both backfill start and duration are set, time wins.
+		if l.config.BackfillStart != "" {
+			newState, err := l.getStateForBackfillStart()
+			if err != nil {
+				return checkpoint.AaLogState{}, err
+			}
+
+			return newState, nil
+		}
+
+		if l.config.BackfillDuration > 0 {
+			newState, err := l.getStateForBackfillDuration()
+			if err != nil {
+				return checkpoint.AaLogState{}, err
+			}
+
+			return newState, nil
+		}
+	}
+
+	// If we got here, then either we can't load the file specified in
+	// the state, backfill is not enabled, or we could not find the
+	// appropriate file from which to start the backfill. So start from
+	// the most recent record.
+	newState, err := l.getStateForLastRecord()
+	if err != nil {
+		return checkpoint.AaLogState{}, err
+	}
+
+	return newState, nil
+}
+
+// Returns true if the file and parameters specified in the given state
+// are still readable and valid. Otherwise returns false.
+func (l *aaLogging) canReadFileFromState(state checkpoint.AaLogState) (bool, error) {
+	l.log.Debugf("Verifying state parameters, file:%s, number:%d, offset:%d", state.FileName, state.RecordNumber, state.RecordOffset)
+
+	filePath := filepath.Join(l.directory, state.FileName)
+	filePath, err := filepath.Abs(filePath)
+	if err != nil {
+		return false, err
+	}
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		// We won't treat the file not existing anymore as an error.
+		// Just return false.
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	defer file.Close()
+
+	header, err := l.readLogHeader(file)
+	if err != nil {
+		return false, err
+	}
+
+	if state.RecordNumber < header.firstRecordNumber || state.RecordNumber > header.lastRecordNumber() {
+		return false, nil
+	}
+
+	if state.RecordOffset < header.firstRecordOffset || state.RecordOffset > header.lastRecordOffset {
+		return false, nil
+	}
+
+	_, err = readLogRecord(file, state.RecordNumber, state.RecordOffset)
+	if err != nil {
+		l.log.Errorf("Failed to read record specified in state from file:%s, number:%d, offset:%d, error:%v", state.FileName, state.RecordNumber, state.RecordOffset, err)
+		return false, nil
+	}
+
+	l.log.Debugf("Successfully verified state parameters, file:%s, number:%d, offset:%d", state.FileName, state.RecordNumber, state.RecordOffset)
+	return true, nil
+}
+
+// Returns state as if the last record in the most recent log file has
+// already been read.
+func (l *aaLogging) getStateForLastRecord() (checkpoint.AaLogState, error) {
+	header, err := l.getLatestHeader()
+	if err != nil {
+		return checkpoint.AaLogState{}, err
+	}
+
+	state := checkpoint.AaLogState{
+		FileName:     header.file,
+		RecordNumber: header.lastRecordNumber(),
+		RecordOffset: header.lastRecordOffset,
+	}
+	l.log.Infof("Using state for last record logged, file:%s, number:%d, offset:%d", state.FileName, state.RecordNumber, state.RecordOffset)
+	return state, nil
+}
+
+// Returns the LogHeader for the most recent log from the header cache.
+// Assumes the header cache is sorted so the last entry is the most recent.
+func (l *aaLogging) getLatestHeader() (LogHeader, error) {
 	l.log.Infof("Looking for most recent log file, directory:%s", l.directory)
 
 	if len(l.headers) == 0 {
-		return "", fmt.Errorf("No log files found, directory:%s", l.directory)
+		return LogHeader{}, fmt.Errorf("No log files found, directory:%s", l.directory)
 	}
 
-	// It's important that l.headers be sorted so that the last entry
-	// is always the most recent
 	header := l.headers[len(l.headers)-1]
+	l.log.Infof("Most recent log file:%s, first record time:%v, first record number:%d", header.file, header.firstRecordTime, header.firstRecordNumber)
+	return header, nil
+}
+
+// Returns a checkpoint.AaLogState as if the most recent record before the
+// configured backfill start time has been read.
+func (l *aaLogging) getStateForBackfillStart() (checkpoint.AaLogState, error) {
+	backfillStart, err := time.ParseInLocation(time.RFC3339, l.config.BackfillStart, time.Local)
+	if err != nil {
+		return checkpoint.AaLogState{}, fmt.Errorf("backfill_start has an invalid time value:'%s'. The value should be in RFC3339 format.", l.config.BackfillStart)
+	}
+
+	l.log.Infof("Looking for log to backfill from a start time, directory:%s, time:%v", l.directory, backfillStart)
+
+	state, err := l.getStateForStartTime(backfillStart)
+	if err != nil {
+		return checkpoint.AaLogState{}, err
+	}
+
+	return state, nil
+}
+
+func (l *aaLogging) getStateForStartTime(recordTime time.Time) (checkpoint.AaLogState, error) {
+	header, err := l.getLatestHeaderBeforeTime(recordTime)
+	if err != nil {
+		return checkpoint.AaLogState{}, err
+	}
+
+	if header.firstRecordTime.IsZero() {
+		// We did not find a log header from before the record time.
+		// So look for the first header after the record time.
+		header, err = l.getFirstHeaderAfterTime(recordTime)
+		if err != nil {
+			return checkpoint.AaLogState{}, err
+		}
+	}
+
+	if header.firstRecordTime.IsZero() {
+		// We were unable to find any logs.
+		return checkpoint.AaLogState{}, nil
+	}
+
+	// Now need to find the last record before the start time.
+	record, err := l.getLastRecordBeforeTime(header, recordTime)
+	if err != nil {
+		return checkpoint.AaLogState{}, err
+	}
+
+	state := checkpoint.AaLogState{
+		FileName:     header.file,
+		RecordNumber: record.number,
+		RecordOffset: record.offset,
+	}
+	l.log.Infof("Found state to backfill from a start time:%v, file:%s, number:%d, offset:%d, record time:%v", recordTime, header.file, record.number, record.offset, record.recordTime)
+	return state, nil
+}
+
+// Returns the LogHeader that has the most recent record before the given time
+// or returns an empty LogHeader if none can be found.
+// Assumes the header cache is sorted so the last entry is the most recent.
+func (l *aaLogging) getLatestHeaderBeforeTime(recordTime time.Time) (LogHeader, error) {
+	l.log.Infof("Looking for header containing a record before time value, directory:%s, time:%v", l.directory, recordTime)
+
+	if len(l.headers) == 0 {
+		return LogHeader{}, fmt.Errorf("No log files found, directory:%s", l.directory)
+	}
+
+	header := LogHeader{}
+	for _, h := range l.headers {
+		if h.firstRecordTime.After(recordTime) {
+			// All of the headers after this one should also
+			// be after the given time. So we should have
+			// already found a match.
+			break
+		}
+
+		header = h
+	}
+	return header, nil
+}
+
+// Returns the LogHeader that has the most oldest record after the given time
+// or returns an empty LogHeader if none can be found.
+// Assumes the header cache is sorted so the last entry is the most recent.
+func (l *aaLogging) getFirstHeaderAfterTime(recordTime time.Time) (LogHeader, error) {
+	l.log.Infof("Looking for header containing a record before time value, directory:%s, time:%v", l.directory, recordTime)
+
+	if len(l.headers) == 0 {
+		return LogHeader{}, fmt.Errorf("No log files found, directory:%s", l.directory)
+	}
+
+	header := LogHeader{}
+	for i := len(l.headers) - 1; i >= 0; i-- {
+		h := l.headers[i]
+		if h.lastRecordTime.Before(recordTime) {
+			// All of the headers after this one should also
+			// be before the given time. So we should have
+			// already found a match.
+			break
+		}
+
+		header = h
+	}
+	return header, nil
+}
+
+// Returns a checkpoint.AaLogState as if the most recent record before the
+// configured backfill duration has been read.
+func (l *aaLogging) getStateForBackfillDuration() (checkpoint.AaLogState, error) {
+	l.log.Infof("Looking for log to backfill from a duration, directory:%s, duration:%v", l.directory, l.config.BackfillDuration)
+
+	backfillStart := time.Now().Add(-l.config.BackfillDuration)
+
+	state, err := l.getStateForStartTime(backfillStart)
+	if err != nil {
+		return checkpoint.AaLogState{}, err
+	}
+
+	return state, nil
+}
+
+// Returns the latest record in the given log before the given time.
+func (l *aaLogging) getLastRecordBeforeTime(header LogHeader, recordTime time.Time) (LogRecord, error) {
+	filePath := filepath.Join(l.directory, header.file)
+	filePath, err := filepath.Abs(filePath)
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		return LogRecord{}, err
+	}
+	defer file.Close()
+
+	record := LogRecord{}
+	number := header.firstRecordNumber
+	offset := header.firstRecordOffset
+	for i := 0; i < int(header.messageCount); i++ {
+		r, err := readLogRecord(file, number, offset)
+		if err != nil {
+			return LogRecord{}, err
+		}
+
+		if r.recordTime.After(recordTime) {
+			// All records after this one should also be after the given time.
+			// So we should have already found the correct record.
+			break
+		}
+
+		record = r
+		offset = r.offsetToNextRecord
+		number++
+	}
+	return record, nil
+}
+
+// Returns the relative file path to the most recent log file.
+func (l *aaLogging) getLatestLogFilePath() (string, error) {
+	header, err := l.getLatestHeader()
+	if err != nil {
+		return "", err
+	}
 	filePath := filepath.Join(l.directory, header.file)
 	l.log.Infof("Most recent log file:%s", filePath)
 	return filePath, nil

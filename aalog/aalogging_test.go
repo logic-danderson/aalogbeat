@@ -405,7 +405,7 @@ func TestReadActualLogFile(t *testing.T) {
 		"batch_size":   1000000,
 	}
 
-	aalog, teardown := setupAaLog(t, filePath, 0, 0, options)
+	aalog, teardown := setupAaLog(t, filePath, uint64(27741), int32(144), options)
 	defer teardown()
 
 	records, err := aalog.Read()
@@ -413,27 +413,36 @@ func TestReadActualLogFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Len(t, records, 1049)
+	assert.Equal(t, fileName, aalog.Name())
+	state := aalog.State()
+	assert.Equal(t, uint64(28789), state.RecordNumber, "state.RecordNumber")
+	assert.Equal(t, int32(281626), state.RecordOffset, "state.RecordOffset")
+
+	// There are actually 1049 records in the log
+	// but the way state works we'll skip the first record
+	// as if we already read it based on what we specified
+	// in the call to setupAaLog() above.
+	assert.Len(t, records, 1048)
 
 	// First record
 	r := records[0]
 	assert.Equal(t, "DA17U3SP11565612061.aaLOG", r.file, "file")
-	assert.Equal(t, int32(94), r.length, "length")
-	assert.Equal(t, uint64(27741), r.number, "number")
-	assert.Equal(t, int32(144), r.offset, "offset")
-	assert.Equal(t, int32(0), r.offsetToPreviousRecord, "offsetToPreviousRecord")
-	assert.Equal(t, int32(238), r.offsetToNextRecord, "offsetToNextRecord")
+	assert.Equal(t, int32(124), r.length, "length")
+	assert.Equal(t, uint64(27742), r.number, "number")
+	assert.Equal(t, int32(238), r.offset, "offset")
+	assert.Equal(t, int32(144), r.offsetToPreviousRecord, "offsetToPreviousRecord")
+	assert.Equal(t, int32(362), r.offsetToNextRecord, "offsetToNextRecord")
 	assert.Equal(t, "0.0.0.0", r.sessionId, "sessionId")
-	assert.Equal(t, uint32(2204), r.processId, "processId")
-	assert.Equal(t, uint32(2220), r.threadId, "threadId")
-	assert.Equal(t, time.Date(2019, time.August, 12, 7, 14, 21, 890812000, time.Local), r.recordTime, "recordTime")
+	assert.Equal(t, uint32(2356), r.processId, "processId")
+	assert.Equal(t, uint32(2360), r.threadId, "threadId")
+	assert.Equal(t, time.Date(2019, time.August, 12, 7, 14, 23, 901476700, time.Local), r.recordTime, "recordTime")
 	assert.Equal(t, "Info", r.logFlag, "logFlag")
-	assert.Equal(t, "aaLogger", r.component, "component")
-	assert.Equal(t, "Logger Started.", r.message, "message")
+	assert.Equal(t, "aahGateway", r.component, "component")
+	assert.Equal(t, "Starting aahGateway Service.", r.message, "message")
 	assert.Equal(t, "", r.processName, "processName")
 
 	// Skip a bit
-	r = records[19]
+	r = records[18]
 	assert.Equal(t, "DA17U3SP11565612061.aaLOG", r.file, "file")
 	assert.Equal(t, int32(582), r.length, "length")
 	assert.Equal(t, uint64(27760), r.number, "number")
@@ -474,7 +483,7 @@ func TestReadOneUnreadRecord(t *testing.T) {
 
 	fileName := "test-log-single.aaLOG"
 
-	testRecords := createTestLogRecords(fileName, 1, 1)
+	testRecords := createTestLogRecords(fileName, 2, 1)
 	testHeader := createTestLogHeader(fileName, "MyPC", "Session01", "FileX.aaLOG", testRecords)
 
 	directory := "test-files"
@@ -495,9 +504,8 @@ func TestReadOneUnreadRecord(t *testing.T) {
 		"file_pattern": "*.aaLOG",
 		"batch_size":   1000,
 	}
-	// We haven't ready any messages yet, so pass in a
-	// record number of 0.
-	aalog, teardown := setupAaLog(t, filePath, 0, 0, options)
+	// Act like we already read the first record.
+	aalog, teardown := setupAaLog(t, filePath, 1, 110, options)
 	defer teardown()
 
 	records, err := aalog.Read()
@@ -505,10 +513,15 @@ func TestReadOneUnreadRecord(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Len(t, records, len(testRecords))
+	assert.Equal(t, fileName, aalog.Name())
+	state := aalog.State()
+	assert.Equal(t, records[0].number, state.RecordNumber, "state.RecordNumber")
+	assert.Equal(t, records[0].offset, state.RecordOffset, "state.RecordOffset")
+
+	assert.Len(t, records, 1)
 	r := records[0]
-	assert.Equal(t, uint64(1), r.number)
-	assertRecordsMatch(t, testRecords[0], r)
+	assert.Equal(t, uint64(2), r.number)
+	assertRecordsMatch(t, testRecords[1], r)
 }
 
 // Verify we can read multiple records as if we have not ready any records before,
@@ -538,9 +551,8 @@ func TestReadMultipleUnreadRecords(t *testing.T) {
 		"file_pattern": "*.aaLOG",
 		"batch_size":   1000,
 	}
-	// We haven't ready any messages yet, so pass in a
-	// record number of 0.
-	aalog, teardown := setupAaLog(t, filePath, 0, 0, options)
+	// Act like we already read the first record.
+	aalog, teardown := setupAaLog(t, filePath, 1001, 122, options)
 	defer teardown()
 
 	records, err := aalog.Read()
@@ -548,7 +560,13 @@ func TestReadMultipleUnreadRecords(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Len(t, records, len(testRecords))
+	assert.Equal(t, fileName, aalog.Name())
+	state := aalog.State()
+	lastIndex := len(records) - 1
+	assert.Equal(t, records[lastIndex].number, state.RecordNumber, "state.RecordNumber")
+	assert.Equal(t, records[lastIndex].offset, state.RecordOffset, "state.RecordOffset")
+
+	assert.Len(t, records, len(testRecords)-1)
 	for _, r := range records {
 		lr, found := findMatchingRecord(r.number, testRecords)
 		if !found {
@@ -599,11 +617,15 @@ func TestReadOneRecordWithState(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	assert.Equal(t, fileName, aalog.Name())
+	state := aalog.State()
+	assert.Equal(t, records[0].number, state.RecordNumber, "state.RecordNumber")
+	assert.Equal(t, records[0].offset, state.RecordOffset, "state.RecordOffset")
+
 	// Should have skipped the record with number 102. So it should skip
 	// records 101 and 102 and return only 103.
 	assert.Len(t, records, 1)
 	r := records[0]
-	t.Log(r)
 	assert.Equal(t, uint64(103), r.number)
 	assertRecordsMatch(t, testRecords[2], r)
 }
@@ -648,6 +670,12 @@ func TestReadMultipleRecordsWithState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	assert.Equal(t, fileName, aalog.Name())
+	state := aalog.State()
+	lastIndex := len(records) - 1
+	assert.Equal(t, records[lastIndex].number, state.RecordNumber, "state.RecordNumber")
+	assert.Equal(t, records[lastIndex].offset, state.RecordOffset, "state.RecordOffset")
 
 	// Should have skipped the record with number 1008. So it should skip
 	// records up to 1008 and return records 1009 and after.
@@ -702,6 +730,11 @@ func TestReadZeroRecordsWithState(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	assert.Equal(t, fileName, aalog.Name())
+	state := aalog.State()
+	assert.Equal(t, tr.number, state.RecordNumber, "state.RecordNumber")
+	assert.Equal(t, tr.offset, state.RecordOffset, "state.RecordOffset")
+
 	// Should have returned an empty array.
 	assert.Len(t, records, 0)
 }
@@ -739,6 +772,11 @@ func TestReadZeroRecordsWhenEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	assert.Equal(t, fileName, aalog.Name())
+	state := aalog.State()
+	assert.Equal(t, uint64(0), state.RecordNumber, "state.RecordNumber")
+	assert.Equal(t, int32(0), state.RecordOffset, "state.RecordOffset")
 
 	// Should have returned an empty array.
 	assert.Len(t, records, 0)
@@ -782,6 +820,12 @@ func TestReadMultipleRecordsUpToBatchLimit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	assert.Equal(t, fileName, aalog.Name())
+	state := aalog.State()
+	lastIndex := len(records) - 1
+	assert.Equal(t, records[lastIndex].number, state.RecordNumber, "state.RecordNumber")
+	assert.Equal(t, records[lastIndex].offset, state.RecordOffset, "state.RecordOffset")
 
 	// Should have skipped the record with number 10011. It should start
 	// at record 10012 and read a total of 1,000 records.
@@ -836,6 +880,12 @@ func TestReadMultipleRecordsUpToDifferentBatchLimit(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	assert.Equal(t, fileName, aalog.Name())
+	state := aalog.State()
+	lastIndex := len(records) - 1
+	assert.Equal(t, records[lastIndex].number, state.RecordNumber, "state.RecordNumber")
+	assert.Equal(t, records[lastIndex].offset, state.RecordOffset, "state.RecordOffset")
+
 	// Should have skipped the record with number 1021. It should start
 	// at record 1022 and read a total of 500 records.
 	assert.Len(t, records, 500)
@@ -849,8 +899,7 @@ func TestReadMultipleRecordsUpToDifferentBatchLimit(t *testing.T) {
 	}
 }
 
-// Verify it reads no more than the configured batch size of records
-// with a different setting
+// Verify we get no records back when state is empty.
 func TestReadFindsMostRecentFileWhenNoFileInState(t *testing.T) {
 	configureLogp()
 
@@ -914,17 +963,14 @@ func TestReadFindsMostRecentFileWhenNoFileInState(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Should have started with the records in file FileABC.aaLOG
-	// starting at record number 11
-	assert.Len(t, records, len(testRecordsB))
-	for _, r := range records {
-		assert.True(t, r.number >= uint64(11))
-		lr, found := findMatchingRecord(r.number, testRecordsB)
-		if !found {
-			t.Errorf("Unknown record number %d returned by Read()", r.number)
-		}
-		assertRecordsMatch(t, lr, r)
-	}
+	// Should have found file FileABC.aaLOG but did not
+	// return any records.
+	assert.Equal(t, "FileABC.aaLOG", aalog.Name())
+	state := aalog.State()
+	assert.Equal(t, testHeaderB.lastRecordNumber(), state.RecordNumber, "state.RecordNumber")
+	assert.Equal(t, testHeaderB.lastRecordOffset, state.RecordOffset, "state.RecordOffset")
+
+	assert.Len(t, records, 0)
 }
 
 // Verify when it reaches the end of one log file it will find the next one
@@ -948,6 +994,12 @@ func TestReadSwitchFromOneLogFileToAnother(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	assert.Equal(t, "DA17U3SP11565612061.aaLOG", aalog.Name())
+	state := aalog.State()
+	lastIndex := len(records) - 1
+	assert.Equal(t, records[lastIndex].number, state.RecordNumber, "state.RecordNumber")
+	assert.Equal(t, records[lastIndex].offset, state.RecordOffset, "state.RecordOffset")
 
 	assert.Len(t, records, 500)
 
@@ -979,6 +1031,7 @@ func TestWhenBackfillIsDisabled(t *testing.T) {
 		"directory":        directory,
 		"file_pattern":     "*.aaLOG",
 		"backfill_enabled": "false",
+		"batch_size":       10000,
 	}
 
 	aalog, teardown := setupAaLog(t, "", 0, 0, options)
@@ -988,6 +1041,8 @@ func TestWhenBackfillIsDisabled(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	assert.Equal(t, "backfill-test-0.aaLOG", aalog.Name())
 
 	assert.Len(t, records, 0)
 }
@@ -1013,6 +1068,7 @@ func TestWhenBackfillHasDuration(t *testing.T) {
 		"file_pattern":      "*.aaLOG",
 		"backfill_enabled":  "true",
 		"backfill_duration": "18h",
+		"batch_size":        10000,
 	}
 
 	aalog, teardown := setupAaLog(t, "", 0, 0, options)
@@ -1023,7 +1079,52 @@ func TestWhenBackfillHasDuration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Len(t, records, 0)
+	// Should have one record every minute over the duration.
+	assert.Len(t, records, 18*60)
+	startTime := time.Now().Add(time.Hour * -18)
+	for _, record := range records {
+		assert.True(t, record.recordTime.After(startTime))
+	}
+}
+
+// Verify when backfill is enabled and start time is set
+// it returns all records since the start time.
+func TestWhenBackfillHasStartTime(t *testing.T) {
+	configureLogp()
+
+	directory := "test-files"
+	logFiles, err := createBackfillTestLogs(directory, 10)
+	defer func() {
+		for _, filePath := range logFiles {
+			deleteFileIfExists(filePath)
+		}
+	}()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	startTime := time.Now().Add(time.Hour * -36)
+	options := map[string]interface{}{
+		"directory":        directory,
+		"file_pattern":     "*.aaLOG",
+		"backfill_enabled": "true",
+		"backfill_start":   startTime.Format(time.RFC3339),
+		"batch_size":       10000,
+	}
+
+	aalog, teardown := setupAaLog(t, "", 0, 0, options)
+	defer teardown()
+
+	records, err := aalog.Read()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Should have one record every minute over the duration.
+	assert.Len(t, records, 36*60)
+	for _, record := range records {
+		assert.True(t, record.recordTime.After(startTime))
+	}
 }
 
 // Creates a set of log files to use for backfill testing in
