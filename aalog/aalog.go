@@ -94,11 +94,11 @@ func (r Record) ToEvent() beat.Event {
 		"log_flag":     r.logFlag,
 		"component":    r.component,
 		"message":      r.message,
+		"file_name":    r.file,
 	}
 
 	fields := common.MapStr{
-		"log.file.path": r.file,
-		"aalog":         aa,
+		"aalog": aa,
 	}
 
 	return beat.Event{
