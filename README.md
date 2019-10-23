@@ -92,6 +92,16 @@ make update
 ```
 
 
+### Publishing Dashboards
+
+Copy the files in _meta/kibana.generated/7/dashboard to kibana/7/dashboard. 
+Then run:
+
+```
+./aalogbeat setup --dashboards
+```
+
+
 ### Cleanup
 
 To clean  Aalogbeat source code, run the following command:
