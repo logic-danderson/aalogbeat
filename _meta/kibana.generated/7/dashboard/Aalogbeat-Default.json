@@ -45,8 +45,8 @@
                 }
             ], 
             "type": "dashboard", 
-            "updated_at": "2019-10-23T18:34:18.857Z", 
-            "version": "WzEzMzYsMTJd"
+            "updated_at": "2019-10-23T19:45:13.191Z", 
+            "version": "WzEzNzAsMTJd"
         }, 
         {
             "attributes": {
@@ -55,7 +55,7 @@
                     "searchSourceJSON": "{\"filter\": [], \"query\": {\"query\": \"\", \"language\": \"kuery\"}, \"indexRefName\": \"kibanaSavedObjectMeta.searchSourceJSON.index\"}"
                 }, 
                 "title": "aaLog Count by Host Bar", 
-                "uiStateJSON": "{}", 
+                "uiStateJSON": "{\"vis\": {\"colors\": {\"Info\": \"#82B5D8\", \"Warning\": \"#EAB839\", \"Error\": \"#E24D42\"}}}", 
                 "version": 1, 
                 "visState": "{\"type\": \"horizontal_bar\", \"params\": {\"labels\": {}, \"dimensions\": {\"y\": [{\"params\": {}, \"aggType\": \"count\", \"accessor\": 2, \"format\": {\"id\": \"number\"}}], \"series\": [{\"params\": {}, \"aggType\": \"terms\", \"accessor\": 1, \"format\": {\"params\": {\"otherBucketLabel\": \"Other\", \"id\": \"string\", \"missingBucketLabel\": \"Missing\"}, \"id\": \"terms\"}}], \"x\": {\"params\": {}, \"aggType\": \"terms\", \"accessor\": 0, \"format\": {\"params\": {\"otherBucketLabel\": \"Other\", \"id\": \"string\", \"missingBucketLabel\": \"Missing\"}, \"id\": \"terms\"}}}, \"type\": \"histogram\", \"categoryAxes\": [{\"style\": {}, \"scale\": {\"type\": \"linear\"}, \"show\": true, \"title\": {}, \"labels\": {\"filter\": false, \"rotate\": 0, \"truncate\": 200, \"show\": true}, \"position\": \"left\", \"type\": \"category\", \"id\": \"CategoryAxis-1\"}], \"legendPosition\": \"right\", \"addTimeMarker\": false, \"addLegend\": true, \"grid\": {\"categoryLines\": false}, \"times\": [], \"addTooltip\": true, \"valueAxes\": [{\"style\": {}, \"scale\": {\"type\": \"linear\", \"mode\": \"normal\"}, \"name\": \"LeftAxis-1\", \"show\": true, \"title\": {\"text\": \"Count\"}, \"labels\": {\"filter\": true, \"rotate\": 75, \"truncate\": 100, \"show\": true}, \"position\": \"bottom\", \"type\": \"value\", \"id\": \"ValueAxis-1\"}], \"seriesParams\": [{\"showCircles\": true, \"show\": true, \"data\": {\"id\": \"1\", \"label\": \"Count\"}, \"mode\": \"stacked\", \"drawLinesBetweenPoints\": true, \"valueAxis\": \"ValueAxis-1\", \"type\": \"histogram\"}]}, \"aggs\": [{\"params\": {}, \"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"missingBucket\": false, \"missingBucketLabel\": \"Missing\", \"field\": \"host.hostname\", \"otherBucketLabel\": \"Other\", \"otherBucket\": true, \"order\": \"desc\", \"size\": 10}, \"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"schema\": \"segment\"}, {\"params\": {\"orderBy\": \"1\", \"missingBucket\": false, \"missingBucketLabel\": \"Missing\", \"field\": \"aalog.log_flag\", \"otherBucketLabel\": \"Other\", \"otherBucket\": true, \"order\": \"desc\", \"size\": 10}, \"type\": \"terms\", \"enabled\": true, \"id\": \"3\", \"schema\": \"group\"}], \"title\": \"aaLog Count by Host Bar\"}"
             }, 
@@ -71,8 +71,8 @@
                 }
             ], 
             "type": "visualization", 
-            "updated_at": "2019-10-23T18:32:21.427Z", 
-            "version": "WzEzMzMsMTJd"
+            "updated_at": "2019-10-29T14:52:13.461Z", 
+            "version": "WzE0MDQsMTdd"
         }, 
         {
             "attributes": {
@@ -81,7 +81,7 @@
                     "searchSourceJSON": "{\"filter\": [], \"query\": {\"query\": \"\", \"language\": \"kuery\"}, \"indexRefName\": \"kibanaSavedObjectMeta.searchSourceJSON.index\"}"
                 }, 
                 "title": "aaLog Count over Time", 
-                "uiStateJSON": "{}", 
+                "uiStateJSON": "{\"vis\": {\"colors\": {\"Info\": \"#82B5D8\", \"Warning\": \"#EAB839\", \"Error\": \"#E24D42\"}}}", 
                 "version": 1, 
                 "visState": "{\"type\": \"histogram\", \"params\": {\"labels\": {\"show\": false}, \"dimensions\": {\"y\": [{\"params\": {}, \"aggType\": \"count\", \"accessor\": 1, \"format\": {\"id\": \"number\"}}], \"series\": [{\"params\": {}, \"aggType\": \"terms\", \"accessor\": 0, \"format\": {\"params\": {\"otherBucketLabel\": \"Other\", \"id\": \"string\", \"missingBucketLabel\": \"Missing\"}, \"id\": \"terms\"}}], \"x\": null}, \"type\": \"histogram\", \"categoryAxes\": [{\"style\": {}, \"scale\": {\"type\": \"linear\"}, \"show\": true, \"title\": {}, \"labels\": {\"filter\": true, \"truncate\": 100, \"show\": true}, \"position\": \"bottom\", \"type\": \"category\", \"id\": \"CategoryAxis-1\"}], \"legendPosition\": \"right\", \"addTimeMarker\": false, \"addLegend\": true, \"grid\": {\"categoryLines\": false}, \"times\": [], \"addTooltip\": true, \"valueAxes\": [{\"style\": {}, \"scale\": {\"type\": \"linear\", \"mode\": \"normal\"}, \"name\": \"LeftAxis-1\", \"show\": true, \"title\": {\"text\": \"Count\"}, \"labels\": {\"filter\": false, \"rotate\": 0, \"truncate\": 100, \"show\": true}, \"position\": \"left\", \"type\": \"value\", \"id\": \"ValueAxis-1\"}], \"thresholdLine\": {\"color\": \"#34130C\", \"width\": 1, \"style\": \"full\", \"value\": 10, \"show\": false}, \"seriesParams\": [{\"showCircles\": true, \"show\": \"true\", \"data\": {\"id\": \"1\", \"label\": \"Count\"}, \"mode\": \"stacked\", \"drawLinesBetweenPoints\": true, \"valueAxis\": \"ValueAxis-1\", \"type\": \"histogram\"}]}, \"aggs\": [{\"params\": {}, \"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"missingBucket\": false, \"missingBucketLabel\": \"Missing\", \"field\": \"aalog.log_flag\", \"otherBucketLabel\": \"Other\", \"otherBucket\": false, \"order\": \"desc\", \"size\": 10}, \"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"schema\": \"group\"}, {\"params\": {\"min_doc_count\": 1, \"field\": \"@timestamp\", \"interval\": \"auto\", \"extended_bounds\": {}, \"drop_partials\": false, \"useNormalizedEsInterval\": true}, \"type\": \"date_histogram\", \"enabled\": true, \"id\": \"3\", \"schema\": \"segment\"}], \"title\": \"aaLog Count over Time\"}"
             }, 
@@ -97,8 +97,8 @@
                 }
             ], 
             "type": "visualization", 
-            "updated_at": "2019-10-11T20:51:46.446Z", 
-            "version": "WzEyNjgsNF0="
+            "updated_at": "2019-10-29T14:51:57.339Z", 
+            "version": "WzE0MDMsMTdd"
         }, 
         {
             "attributes": {
@@ -107,7 +107,7 @@
                     "searchSourceJSON": "{\"filter\": [], \"query\": {\"query\": \"\", \"language\": \"kuery\"}, \"indexRefName\": \"kibanaSavedObjectMeta.searchSourceJSON.index\"}"
                 }, 
                 "title": "aaLog Messages by Process Bar", 
-                "uiStateJSON": "{}", 
+                "uiStateJSON": "{\"vis\": {\"colors\": {\"Count\": \"#82B5D8\"}}}", 
                 "version": 1, 
                 "visState": "{\"type\": \"horizontal_bar\", \"params\": {\"labels\": {}, \"dimensions\": {\"y\": [{\"params\": {}, \"aggType\": \"count\", \"accessor\": 1, \"format\": {\"id\": \"number\"}}], \"x\": {\"params\": {}, \"aggType\": \"terms\", \"accessor\": 0, \"format\": {\"params\": {\"otherBucketLabel\": \"Other\", \"id\": \"number\", \"missingBucketLabel\": \"Missing\"}, \"id\": \"terms\"}}}, \"type\": \"histogram\", \"categoryAxes\": [{\"style\": {}, \"scale\": {\"type\": \"linear\"}, \"show\": true, \"title\": {}, \"labels\": {\"filter\": false, \"rotate\": 0, \"truncate\": 200, \"show\": true}, \"position\": \"left\", \"type\": \"category\", \"id\": \"CategoryAxis-1\"}], \"legendPosition\": \"right\", \"addTimeMarker\": false, \"addLegend\": true, \"grid\": {\"categoryLines\": false}, \"times\": [], \"addTooltip\": true, \"valueAxes\": [{\"style\": {}, \"scale\": {\"type\": \"linear\", \"mode\": \"normal\"}, \"name\": \"LeftAxis-1\", \"show\": true, \"title\": {\"text\": \"Count\"}, \"labels\": {\"filter\": true, \"rotate\": 75, \"truncate\": 100, \"show\": true}, \"position\": \"bottom\", \"type\": \"value\", \"id\": \"ValueAxis-1\"}], \"seriesParams\": [{\"showCircles\": true, \"show\": true, \"data\": {\"id\": \"1\", \"label\": \"Count\"}, \"mode\": \"normal\", \"drawLinesBetweenPoints\": true, \"valueAxis\": \"ValueAxis-1\", \"type\": \"histogram\"}]}, \"aggs\": [{\"params\": {}, \"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"missingBucket\": false, \"missingBucketLabel\": \"Missing\", \"field\": \"aalog.process_name\", \"otherBucketLabel\": \"Other\", \"otherBucket\": true, \"order\": \"desc\", \"size\": 10}, \"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"schema\": \"segment\"}], \"title\": \"aaLog Messages by Process Bar\"}"
             }, 
@@ -123,8 +123,8 @@
                 }
             ], 
             "type": "visualization", 
-            "updated_at": "2019-10-11T21:16:33.751Z", 
-            "version": "WzEyODksNF0="
+            "updated_at": "2019-10-29T14:52:38.348Z", 
+            "version": "WzE0MDUsMTdd"
         }, 
         {
             "attributes": {
@@ -133,7 +133,7 @@
                     "searchSourceJSON": "{\"filter\": [], \"query\": {\"query\": \"not aalog.log_flag:\\\"Info\\\"\", \"language\": \"kuery\"}, \"indexRefName\": \"kibanaSavedObjectMeta.searchSourceJSON.index\"}"
                 }, 
                 "title": "aaLog Top Non-Info Pie", 
-                "uiStateJSON": "{}", 
+                "uiStateJSON": "{\"vis\": {\"colors\": {\"Warning\": \"#EAB839\", \"Error\": \"#E24D42\"}}}", 
                 "version": 1, 
                 "visState": "{\"type\": \"pie\", \"params\": {\"isDonut\": true, \"dimensions\": {\"buckets\": [{\"params\": {}, \"aggType\": \"terms\", \"accessor\": 0, \"format\": {\"params\": {\"otherBucketLabel\": \"Other\", \"id\": \"string\", \"missingBucketLabel\": \"Missing\"}, \"id\": \"terms\"}}, {\"params\": {}, \"aggType\": \"terms\", \"accessor\": 2, \"format\": {\"params\": {\"otherBucketLabel\": \"Other\", \"id\": \"string\", \"missingBucketLabel\": \"Missing\"}, \"id\": \"terms\"}}, {\"params\": {}, \"aggType\": \"terms\", \"accessor\": 4, \"format\": {\"params\": {\"otherBucketLabel\": \"Other\", \"id\": \"string\", \"missingBucketLabel\": \"Missing\"}, \"id\": \"terms\"}}], \"metric\": {\"params\": {}, \"aggType\": \"count\", \"accessor\": 1, \"format\": {\"id\": \"number\"}}}, \"type\": \"pie\", \"labels\": {\"values\": true, \"last_level\": true, \"truncate\": 100, \"show\": false}, \"legendPosition\": \"right\", \"addLegend\": true, \"addTooltip\": true}, \"aggs\": [{\"params\": {}, \"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"missingBucket\": false, \"missingBucketLabel\": \"Missing\", \"field\": \"aalog.log_flag\", \"otherBucketLabel\": \"Other\", \"otherBucket\": false, \"order\": \"desc\", \"size\": 10}, \"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"schema\": \"segment\"}, {\"params\": {\"orderBy\": \"_key\", \"missingBucket\": false, \"missingBucketLabel\": \"Missing\", \"field\": \"host.hostname\", \"otherBucketLabel\": \"Other\", \"otherBucket\": false, \"order\": \"asc\", \"size\": 5}, \"type\": \"terms\", \"enabled\": true, \"id\": \"4\", \"schema\": \"segment\"}, {\"params\": {\"orderBy\": \"1\", \"missingBucket\": false, \"missingBucketLabel\": \"Missing\", \"field\": \"aalog.component\", \"otherBucketLabel\": \"Other\", \"otherBucket\": false, \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"enabled\": true, \"id\": \"3\", \"schema\": \"segment\"}], \"title\": \"aaLog Top Non-Info Pie\"}"
             }, 
@@ -149,8 +149,8 @@
                 }
             ], 
             "type": "visualization", 
-            "updated_at": "2019-10-23T18:09:09.112Z", 
-            "version": "WzEzMzEsMTJd"
+            "updated_at": "2019-10-29T14:43:20.745Z", 
+            "version": "WzEzOTYsMTdd"
         }, 
         {
             "attributes": {
@@ -188,8 +188,8 @@
                 }
             ], 
             "type": "search", 
-            "updated_at": "2019-10-23T16:29:14.593Z", 
-            "version": "WzEzMjksMTJd"
+            "updated_at": "2019-10-23T19:45:13.191Z", 
+            "version": "WzEzNzUsMTJd"
         }
     ], 
     "version": "7.4.0"

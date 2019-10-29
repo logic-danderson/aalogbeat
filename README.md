@@ -85,7 +85,7 @@ The test coverage is reported in the folder `./build/coverage/`
 ### Update
 
 Each beat has a template for the mapping in elasticsearch and a documentation for the fields
-which is automatically generated based on `fields.yml` by running the following command.
+which is automatically generated based on `fields.yml` by running the following command. 
 
 ```
 make update
@@ -94,13 +94,30 @@ make update
 
 ### Publishing Dashboards
 
-Copy the files in _meta/kibana.generated/7/dashboard to kibana/7/dashboard. 
+Copy the files it generated in _meta/kibana.generated/7/dashboard to kibana/7/dashboard. 
 Then run:
 
 ```
 ./aalogbeat setup --dashboards
 ```
 
+### Exporting Dashboards
+
+To export dashboards for inclusion into the project, run:
+
+```
+go run vendor/github.com/elastic/beats/dev-tools/cmd/dashboards/export_dashboards.go -yml dashboards.yml
+```
+
+That will update the dashboard files under _meta/kibana/7/dashboard.
+
+Then run:
+
+```
+make update
+````
+
+Which will copy the dashboard files from _meta/kibana/7/dashboard to _meta/kibana.generated/7/dashboard.
 
 ### Cleanup
 
