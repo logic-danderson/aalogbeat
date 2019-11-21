@@ -1,11 +1,19 @@
 # Aalogbeat
 
-Welcome to Aalogbeat.
+Aalogbeat is an Elastic Beat that reads Wonderware log files, typically for forwarding to Elasticsearch.
 
 Ensure that this folder is at the following location:
 `${GOPATH}/src/github.com/logic-danderson/aalogbeat`
 
 ## Getting Started with Aalogbeat
+
+### Installing
+
+* Download a [release](https://github.com/logic-danderson/aalogbeat/releases)
+* Extract the ZIP
+* Edit aalogbeat.yml to configure Aalogbeat, including where to find the log files and how to connect to Elasticsearch. See aalogbeat.reference.yml for examples and descriptions.
+* Use the install-service-aalogbeat.ps1 PowerShell script to register Aalogeat as a Windows service.
+* Start the service.
 
 ### Requirements
 
