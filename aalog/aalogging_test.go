@@ -1012,6 +1012,43 @@ func TestReadSwitchFromOneLogFileToAnother(t *testing.T) {
 	assert.Equal(t, "DA17U3SP11565612061.aaLOG", lr.file)
 }
 
+// Verify when if state stopped on the last record in a previous log file
+// that it will pick up the next file
+func TestReadSwitchLogFileWhenStateIsLastRecordInPreviousFile(t *testing.T) {
+	configureLogp()
+
+	directory := "../tests/files/logs"
+	fileName := "DA17U3SP11565271940.aaLOG"
+	filePath := filepath.Join(directory, fileName)
+
+	options := map[string]interface{}{
+		"directory":    directory,
+		"file_pattern": "*.aaLOG",
+		"batch_size":   100,
+	}
+	// Start a few records from the end of the file
+	aalog, teardown := setupAaLog(t, filePath, 27740, 338012, options)
+	defer teardown()
+
+	records, err := aalog.Read()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, "DA17U3SP11565612061.aaLOG", aalog.Name())
+	state := aalog.State()
+	lastIndex := len(records) - 1
+	assert.Equal(t, records[lastIndex].number, state.RecordNumber, "state.RecordNumber")
+	assert.Equal(t, records[lastIndex].offset, state.RecordOffset, "state.RecordOffset")
+
+	assert.Len(t, records, 100)
+
+	// First record should come from the next file.
+	fr := records[0]
+	assert.Equal(t, uint64(27741), fr.number)
+	assert.Equal(t, "DA17U3SP11565612061.aaLOG", fr.file)
+}
+
 // Verify when backfill is disabled it does not return any records on read.
 func TestWhenBackfillIsDisabled(t *testing.T) {
 	configureLogp()

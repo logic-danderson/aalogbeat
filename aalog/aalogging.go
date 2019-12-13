@@ -527,9 +527,19 @@ func (l *aaLogging) readLogRecords(currentCount int32) ([]LogRecord, error) {
 		return nil, err
 	}
 
-	recordCount, recordNumber, offset, err := l.getStartingRecordStats(file)
+	switchedFiles, recordCount, recordNumber, offset, err := l.getStartingRecordStats(file)
 	if err != nil {
 		return nil, err
+	}
+	if switchedFiles {
+		// We switched to another file. Close the current file
+		// and open the new one. l.filePath should have been
+		// updated to point to the new file.
+		file.Close()
+		file, err = os.Open(l.filePath)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// If we zeros back then we don't know what's going on.
@@ -584,17 +594,12 @@ func (l *aaLogging) readLogRecords(currentCount int32) ([]LogRecord, error) {
 	if isNext {
 		// Move to the next log file.
 		file.Close()
+		l.switchToNextLog(nextHeader)
 
-		l.header = nextHeader
-		l.filePath = filepath.Join(l.directory, nextHeader.file)
-		l.recordNumber = 0
-		l.recordOffset = 0
-
-		l.log.Infof("Switching to next log, file:%s", l.filePath)
 		nextRecords, err := l.readLogRecords(recordCount + currentCount)
 		if err != nil {
 			// Log the error but return the records we have.
-			l.log.Errorf("Error calling getNextHeader, returning records that could be read, error:%v", err)
+			l.log.Errorf("Error calling readLogRecords, returning records that could be read, error:%v", err)
 			return records, nil
 		}
 
@@ -604,6 +609,14 @@ func (l *aaLogging) readLogRecords(currentCount int32) ([]LogRecord, error) {
 	}
 
 	return records, nil
+}
+
+func (l *aaLogging) switchToNextLog(nextHeader LogHeader) {
+	l.header = nextHeader
+	l.filePath = filepath.Join(l.directory, nextHeader.file)
+	l.recordNumber = 0
+	l.recordOffset = 0
+	l.log.Infof("Switching to next log, file:%s", l.filePath)
 }
 
 // Finds the given header in the cache and updates it.
@@ -624,7 +637,8 @@ func (l *aaLogging) updateHeaderInCache(header LogHeader) error {
 
 // Figures out where we should start reading records, returning the
 // expected record count, the first record number, and its offset.
-func (l *aaLogging) getStartingRecordStats(file *os.File) (int32, uint64, int32, error) {
+func (l *aaLogging) getStartingRecordStats(file *os.File) (bool, int32, uint64, int32, error) {
+	switchedFiles := false
 	count := int32(0)
 	number := uint64(0)
 	offset := int32(0)
@@ -634,10 +648,35 @@ func (l *aaLogging) getStartingRecordStats(file *os.File) (int32, uint64, int32,
 		number = l.header.firstRecordNumber
 		offset = l.header.firstRecordOffset
 	} else {
-		// Read the records starting after the last one read.
+		// We may be on the last record in the log file already.
+		// If so we should switch to the next file.
+		if l.recordNumber == l.header.lastRecordNumber() && l.recordOffset == l.header.lastRecordOffset {
+			// We are pointed at the last record in the log file.
+			// See if there's a newer log file.
+			nextHeader, isNext, err := l.getNextHeader(l.header)
+			if err != nil {
+				return false, count, number, offset, err
+			}
+			if isNext {
+				// There is a newer log file. Switch to it.
+				l.switchToNextLog(nextHeader)
+				switchedFiles = true
+				// When we're immediately switching log files, we want
+				// to start from the first record in the new log file.
+				number = l.header.firstRecordNumber
+				offset = l.header.firstRecordOffset
+				count = int32(l.header.lastRecordNumber() - number)
+				l.log.Debugf("Reading records starting after last record read, file:%s, count:%d, prev number:%d, prev offset:%d, next number:%d, next offset:%d", file.Name(), count, l.recordNumber, l.recordOffset, number, offset)
+				l.recordNumber = number
+				l.recordOffset = offset
+				return switchedFiles, count, number, offset, nil
+			}
+		}
+		// Read the records starting after the last one read
+		// in the current log file.
 		r, err := readLogRecord(file, l.recordNumber, l.recordOffset)
 		if err != nil {
-			return count, number, offset, err
+			return switchedFiles, count, number, offset, err
 		}
 
 		number = l.recordNumber + 1
@@ -646,9 +685,12 @@ func (l *aaLogging) getStartingRecordStats(file *os.File) (int32, uint64, int32,
 		count = int32(lastRecordNumber - l.recordNumber)
 		l.log.Debugf("Reading records starting after last record read, file:%s, count:%d, prev number:%d, prev offset:%d, next number:%d, next offset:%d", file.Name(), count, l.recordNumber, l.recordOffset, number, offset)
 	}
-	return count, number, offset, nil
+	return switchedFiles, count, number, offset, nil
 }
 
+// Returns the next log header. The 2nd returned value will be true
+// if there is actually is a next header or false if the given
+// header is already the most recent one.
 func (l *aaLogging) getNextHeader(currentHeader LogHeader) (LogHeader, bool, error) {
 	l.log.Infof("Looking for next header, directory:%s, after:%v", l.directory, currentHeader.firstRecordTime)
 	_, headerPos, err := l.getHeaderForFileInCache(currentHeader.file)
